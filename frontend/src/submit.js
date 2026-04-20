@@ -65,9 +65,6 @@ export const SubmitButton = () => {
         throw new Error(`Save failed: ${res.status}`);
       }
 
-      // optional: you can read response if needed
-      // const data = await res.json();
-
       setSaveName('');
       setSaveModalOpen(false);
       setSavedFeedback(true);
