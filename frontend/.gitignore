@@ -27,6 +27,7 @@ Thumbs.db
 # PYTHON (Backend)
 # =========================
 __pycache__/
+backend/__pycache__/
 *.pyc
 *.pyo
 *.pyd
@@ -35,6 +36,7 @@ __pycache__/
 env/
 venv/
 .venv/
+backend/.env
 
 # Python env files
 .env.*
