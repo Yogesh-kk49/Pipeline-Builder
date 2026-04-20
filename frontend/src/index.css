@@ -11,13 +11,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas,
     'Courier New', monospace;
 }
 
-button {
+/* ===== SCOPED: only plain buttons with no class ===== */
+button:not([class]) {
   padding: 10px 18px;
   background-color: #2563eb;
   color: white;
@@ -28,11 +28,10 @@ button {
   transition: all 0.2s ease;
 }
 
-button:hover {
+button:not([class]):hover {
   background-color: #1d4ed8;
   transform: translateY(-1px);
 }
-
 
 input,
 textarea,
@@ -104,7 +103,7 @@ textarea {
   border-radius: 12px;
   min-width: 260px;
   max-width: 260px;
-  overflow: visible; 
+  overflow: visible;
 }
 
 .react-flow__handle {
@@ -119,7 +118,6 @@ textarea {
 .react-flow__handle:hover {
   transform: scale(1.2);
 }
-
 
 .react-flow__edge-path {
   stroke: #94a3b8;

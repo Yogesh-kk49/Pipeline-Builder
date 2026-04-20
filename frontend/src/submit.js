@@ -16,6 +16,9 @@ export const SubmitButton = () => {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('summary');
   const [expandedLogs, setExpandedLogs] = useState({});
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [saveName, setSaveName] = useState('');
+  const [savedFeedback, setSavedFeedback] = useState(false);
 
   useEffect(() => {
     const handleEsc = (e) => {
@@ -33,6 +36,53 @@ export const SubmitButton = () => {
     }));
   };
 
+  const [saving, setSaving] = useState(false);
+
+  const handleSavePipeline = async () => {
+    if (!saveName.trim() || saving) return;
+
+    setSaving(true);
+
+    try {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/pipelines/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: saveName.trim(),
+          nodes: nodes.map((n) => ({
+            ...n,
+            position: {
+              x: typeof n.position?.x === "number" ? n.position.x : 0,
+              y: typeof n.position?.y === "number" ? n.position.y : 0,
+            },
+          })),
+          edges,
+          input_values: inputValues,
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Save failed: ${res.status}`);
+      }
+
+      // optional: you can read response if needed
+      // const data = await res.json();
+
+      setSaveName('');
+      setSaveModalOpen(false);
+      setSavedFeedback(true);
+
+      setTimeout(() => {
+        setSavedFeedback(false);
+      }, 2000);
+
+    } catch (err) {
+      console.error("Save error:", err);
+      alert("Failed to save pipeline. Check backend.");
+    } finally {
+      setSaving(false);
+    }
+  };
   const handleSubmit = async () => {
     if (nodes.length === 0) {
       setResult({
@@ -76,7 +126,7 @@ export const SubmitButton = () => {
         }
       });
 
-      const parseRes = await fetch('http://localhost:8000/pipelines/parse', {
+      const parseRes = await fetch(`${process.env.REACT_APP_API_URL}/pipelines/parse`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nodes, edges }),
@@ -127,7 +177,7 @@ export const SubmitButton = () => {
         nodeSteps: []
       });
 
-      const execRes = await fetch('http://localhost:8000/pipelines/execute', {
+      const execRes = await fetch(`${process.env.REACT_APP_API_URL}/pipelines/execute`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -354,6 +404,50 @@ export const SubmitButton = () => {
             ))}
           </div>
         )}
+
+        {/* ===== SAVE PIPELINE BUTTON ===== */}
+        <div className="sb-save-section">
+          {savedFeedback ? (
+            <div className="sb-save-feedback">✓ Pipeline saved successfully</div>
+          ) : saveModalOpen ? (
+            <div className="sb-save-inline">
+              <input
+                className="sb-save-input"
+                type="text"
+                placeholder="Enter pipeline name..."
+                value={saveName}
+                onChange={(e) => setSaveName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSavePipeline();
+                  if (e.key === 'Escape') setSaveModalOpen(false);
+                }}
+                autoFocus
+              />
+              <div className="sb-save-inline-actions">
+                <button
+                  className="sb-save-confirm-btn"
+                  onClick={handleSavePipeline}
+                  disabled={!saveName.trim() || saving}
+                >
+                  {saving ? "Saving..." : "Save"}
+                </button>
+                <button
+                  className="sb-save-cancel-btn"
+                  onClick={() => { setSaveModalOpen(false); setSaveName(''); }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              className="sb-save-pipeline-btn"
+              onClick={() => setSaveModalOpen(true)}
+            >
+              ⬇ Save Pipeline
+            </button>
+          )}
+        </div>
       </div>
     );
   };

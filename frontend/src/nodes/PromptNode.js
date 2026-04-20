@@ -8,7 +8,8 @@ export default function PromptNode({ id, data }) {
   const outputs = useStore((s) => s.outputs);
   const updateNodeInternals = useUpdateNodeInternals();
 
-  const template = data?.template || "Explain this:";
+  const template =
+    data?.template !== undefined ? data.template : "Explain this:";
   const outputValue = outputs?.[id];
   const number = id.split("-")[1] || "1";
 

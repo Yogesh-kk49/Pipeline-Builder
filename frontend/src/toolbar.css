@@ -1,3 +1,5 @@
+/* ================= ROOT ================= */
+
 .toolbar-root {
   padding: 12px 16px;
   background: linear-gradient(160deg, #111827 0%, #0d1520 100%);
@@ -6,42 +8,144 @@
   box-shadow: 0 2px 10px rgba(0,0,0,0.25);
 }
 
-/* HEADER LAYOUT */
+/* ================= HEADER ================= */
+
 .toolbar-header {
-  position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
   border-bottom: 1px solid rgba(255,255,255,0.05);
 }
 
-/* LEFT SIDE */
 .toolbar-title {
-  position: absolute;
-  left: 0;
   font-family: 'Syne', sans-serif;
   font-weight: 700;
   font-size: 10px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: #475569;
+  color: #64748b;
 }
 
-/* CENTER TITLE */
 .toolbar-main-title {
+  flex: 1;
+  text-align: center;
   font-family: 'Syne', sans-serif;
-  letter-spacing: 0.03em;
   font-size: 16px;
   font-weight: 700;
   color: #e2e8f0;
 }
 
-/* NODES GRID */
+/* ================= NODES ROW ================= */
+
+.toolbar-nodes-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .toolbar-nodes {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
+/* ================= SAVED BUTTON ================= */
+
+.toolbar-saved-btn {
+  flex-shrink: 0;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0 16px;
+  border-radius: 10px;
+
+  border: 1px solid rgba(99, 102, 241, 0.3);
+
+  background: linear-gradient(
+    135deg,
+    rgba(99, 102, 241, 0.25),
+    rgba(139, 92, 246, 0.12)
+  );
+
+  color: #e5e7eb;
+
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+
+  box-shadow:
+    0 2px 8px rgba(99, 102, 241, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+
+  position: relative;
+  overflow: hidden;
+}
+
+/* ===== SHIMMER (soft) ===== */
+
+.toolbar-saved-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+
+  background: linear-gradient(
+    120deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.18),
+    transparent 100%
+  );
+
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+
+/* ===== HOVER ===== */
+
+.toolbar-saved-btn:hover {
+  transform: translateY(-1px);
+
+  background: linear-gradient(
+    135deg,
+    rgba(99, 102, 241, 0.38),
+    rgba(139, 92, 246, 0.2)
+  );
+
+  border-color: rgba(139, 92, 246, 0.45);
+
+  box-shadow:
+    0 6px 18px rgba(99, 102, 241, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.toolbar-saved-btn:hover::before {
+  transform: translateX(100%);
+}
+
+/* ===== CLICK ===== */
+
+.toolbar-saved-btn:active {
+  transform: scale(0.97);
+  box-shadow:
+    0 2px 6px rgba(99, 102, 241, 0.2);
+}
+
+.toolbar-root * {
+  pointer-events: auto;
+}
+.sp-panel {
+  z-index: 1000;
+}
+
+.sp-backdrop {
+  z-index: 900;
+}

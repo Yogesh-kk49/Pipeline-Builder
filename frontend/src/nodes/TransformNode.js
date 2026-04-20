@@ -17,7 +17,7 @@ export default function TransformNode({ id, data }) {
   const outputValue = outputs?.[id];
 
   const formatOutput = (value) => {
-    if (value === undefined || value === null) return "null";
+    if (value == null || value === "none") return "null";
     if (Array.isArray(value)) return value.join(" ");
     return String(value);
   };

@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import ReactFlow, { Controls, Background, MiniMap, ControlButton } from 'reactflow';
 import { useStore } from './store';
 import { shallow } from 'zustand/shallow';
-
+import { PipelineToolbar } from "./toolbar";
 import { InputNode } from './nodes/inputNode';
 import { LLMNode } from './nodes/llmNode';
 import { OutputNode } from './nodes/outputNode';
@@ -13,9 +13,7 @@ import DelayNode from './nodes/DelayNode';
 import MergeNode from './nodes/MergeNode';
 import FilterNode from './nodes/FilterNode';
 import PromptNode from './nodes/PromptNode';
-
 import 'reactflow/dist/style.css';
-
 const gridSize = 20;
 const proOptions = { hideAttribution: true };
 
@@ -60,7 +58,6 @@ const selector = (state) => ({
 
 export const PipelineUI = () => {
   const reactFlowWrapper = useRef(null);
-  const isRunningRef = useRef(false);
   const abortRef = useRef(null);
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
 
@@ -83,7 +80,6 @@ export const PipelineUI = () => {
   const runPipeline = async () => {
     const requestId = ++requestIdRef.current;
 
-    // cancel previous
     if (abortRef.current) {
       abortRef.current.abort();
     }
@@ -107,7 +103,6 @@ export const PipelineUI = () => {
 
       const data = await res.json();
 
-      // 🔥 ONLY APPLY LATEST RESPONSE
       if (requestId === requestIdRef.current) {
         if (data.outputs) {
           setOutputs(data.outputs);
@@ -118,6 +113,7 @@ export const PipelineUI = () => {
       console.error("Execution error:", err);
     }
   };
+
   // 🔥 AUTO FLOW
   useEffect(() => {
     if (nodes.length === 0) return;
@@ -172,7 +168,7 @@ export const PipelineUI = () => {
 
       addNode({
         id: nodeID,
-        type, // UI rendering type
+        type,
         position,
         data: getInitNodeData(nodeID, type, backendType),
       });
@@ -184,6 +180,7 @@ export const PipelineUI = () => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
   }, []);
+  
 
   return (
     <div
@@ -203,7 +200,11 @@ export const PipelineUI = () => {
         proOptions={proOptions}
         snapGrid={[gridSize, gridSize]}
         connectionLineType="smoothstep"
+        fitView={false} 
+        defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+        nodeOrigin={[0, 0]}
       >
+
         <Background color="#444" gap={gridSize} />
 
         <Controls>

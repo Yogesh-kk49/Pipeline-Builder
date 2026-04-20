@@ -41,6 +41,20 @@ export const useStore = create((set, get) => ({
   },
 
   // =========================
+  // SET NODES (used for loading saved pipelines)
+  // =========================
+  setNodes: (nodes) => {
+    set({ nodes });
+  },
+
+  // =========================
+  // SET EDGES (used for loading saved pipelines)
+  // =========================
+  setEdges: (edges) => {
+    set({ edges });
+  },
+
+  // =========================
   // CLEAR ALL
   // =========================
   clearAll: () => {
@@ -142,7 +156,12 @@ export const useStore = create((set, get) => ({
       },
     }));
   },
-
+// =========================
+// SET ALL INPUT VALUES (for loading)
+// =========================
+setInputValues: (values) => {
+  set({ inputValues: values || {} });
+},
   // =========================
   // SET EXECUTION OUTPUTS
   // =========================

@@ -12,7 +12,8 @@ The system is powered by a custom backend execution engine that processes workfl
 - ⚙️ Backend execution engine using DAG processing  
 - 🔍 Built-in nodes: Filter, Condition, Transform, Delay, Merge  
 - 🧠 Robust null propagation across the pipeline  
-- 📤 Real-time output visualization per node  
+- 📤 Real-time output visualization per node 
+- 💾 Save and load pipelines   
 - 🔄 Dynamic data flow between connected nodes  
 
 ---
@@ -34,10 +35,12 @@ The system is powered by a custom backend execution engine that processes workfl
 
 1. Users create nodes (Input, Filter, Condition, Output, etc.)  
 2. Nodes are connected to form a workflow graph  
-3. The backend parses the graph into a DAG  
-4. Nodes are executed in topological order  
-5. Data flows between nodes based on connections  
-6. Final outputs are rendered in output nodes  
+3. Pipelines can be saved and loaded for future reuse  
+4. The backend parses the graph into a DAG  
+5. Nodes are executed in topological order  
+6. Data flows between nodes based on connections  
+7. Final outputs are rendered in output nodes  
+
 
 ---
 
@@ -126,7 +129,6 @@ Frontend runs at:
 
 ## 🚧 Future Improvements
 
-- 💾 Save and load pipelines  
 - 🔐 User authentication & authorization  
 - ☁️ Cloud deployment (Docker / AWS / Vercel)  
 - 🤖 Integration with external APIs / LLMs  

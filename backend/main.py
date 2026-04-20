@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from typing import List, Optional
+from typing import List, Optional, final
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from collections import defaultdict
@@ -7,7 +7,46 @@ from collections import deque
 import time
 import asyncio
 app = FastAPI()
+import uuid
+from pymongo import MongoClient
+import os
+from dotenv import load_dotenv
+import certifi
+from pymongo import MongoClient
+import os
+from dotenv import load_dotenv
+from datetime import datetime
 
+# Load environment variables
+load_dotenv()
+
+# Get Mongo URI
+MONGO_URI = os.getenv("MONGO_URI")
+
+# Validate URI
+if not MONGO_URI:
+    raise ValueError("MONGO_URI is not set in environment variables")
+
+try:
+    # Create client with timeout
+    client = MongoClient(
+        MONGO_URI,
+        serverSelectionTimeoutMS=5000,
+        tlsCAFile=certifi.where()
+    )
+
+    # 🔥 Force connection check
+    client.admin.command('ping')
+    print("✅ MongoDB connected successfully")
+
+    # Database & collection
+    db = client["pipeline_db"]
+    collection = db["pipelines"]
+
+except Exception as e:
+    print("❌ MongoDB connection failed:", e)
+    collection = None   # 🔥 allow app to run
+    
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -24,6 +63,7 @@ class Node(BaseModel):
     id: str
     type: str
     data: Optional[dict] = {}
+    position: Optional[dict] = {}
 
 
 class Edge(BaseModel):
@@ -44,7 +84,72 @@ class ExecuteRequest(BaseModel):
     edges: List[Edge]
     input_values: dict
 
+# =========================
+# SAVE PIPELINE
+# =========================
+class SavePipelineRequest(BaseModel):
+    name: str
+    nodes: List[Node]
+    edges: List[Edge]
+    input_values: dict
 
+from bson import ObjectId
+from bson.errors import InvalidId
+
+@app.delete("/pipelines/{pipeline_id}")
+def delete_pipeline(pipeline_id: str):
+    try:
+        try:
+            obj_id = ObjectId(pipeline_id)
+        except InvalidId:
+            return {"error": "Invalid pipeline ID"}
+
+        result = collection.delete_one({"_id": obj_id})
+
+        if result.deleted_count == 0:
+            return {"error": "Pipeline not found"}
+
+        return {"message": "Pipeline deleted"}
+
+    except Exception as e:
+        return {"error": str(e)}
+    
+@app.post("/pipelines/save")
+def save_pipeline(req: SavePipelineRequest):
+    try:
+        pipeline = {
+            "name": req.name,
+            "nodes": [n.dict() for n in req.nodes],
+            "edges": [e.dict() for e in req.edges],
+            "input_values": req.input_values,
+            "savedAt": datetime.utcnow()  # ✅ move it HERE
+        }
+
+        result = collection.insert_one(pipeline)
+
+        return {
+            "message": "Pipeline saved",
+            "id": str(result.inserted_id)
+        }
+
+    except Exception as e:
+        return {
+            "error": str(e)
+        }
+    
+# =========================
+# GET ALL PIPELINES
+# =========================
+@app.get("/pipelines")
+def get_pipelines():
+    pipelines = []
+
+    for p in collection.find():
+        p["id"] = str(p["_id"])
+        del p["_id"]
+        pipelines.append(p)
+
+    return pipelines
 # =========================
 # Cycle Detection
 # =========================
@@ -168,7 +273,7 @@ async def run_node_logic(node, inputs, input_values, nodes):
     # INPUT NODE
     # =========================
     if node_type in ["input", "customInput"]:
-        return input_values.get(node.id, "")
+        return input_values.get(node.id, None)
 
     # =========================
     # TEXT NODE
@@ -208,7 +313,8 @@ async def run_node_logic(node, inputs, input_values, nodes):
 
             result = " ".join(appended) + (" " if template else "") + template
 
-        return " ".join(result.split())
+        final = " ".join(result.split())
+        return final if final else None
     # =========================
     # UPPERCASE
     # =========================
@@ -268,21 +374,25 @@ async def run_node_logic(node, inputs, input_values, nodes):
     elif node_type == "transform":
         operation = node.data.get("operation", "uppercase")
 
-        input_val = str(input_val)
+        # 🔥 FIX: handle empty input properly
+        if input_val is None:
+            return None
+
+        input_str = str(input_val)
 
         if operation == "uppercase":
-            return input_val.upper()
+            return input_str.upper()
 
         elif operation == "lowercase":
-            return input_val.lower()
+            return input_str.lower()
 
         elif operation == "reverse":
-            return input_val[::-1]
+            return input_str[::-1]
 
         elif operation == "trim":
-            return input_val.strip()
+            return input_str.strip()
 
-        return input_val
+        return input_str
     # =========================
     # MERGE
     # =========================
@@ -351,7 +461,8 @@ async def run_node_logic(node, inputs, input_values, nodes):
 
             result = " ".join([template.strip()] + appended).strip()
 
-        return " ".join(result.split())
+        final = " ".join(result.split())
+        return final if final else None
     elif node_type == "llm":
         prompt_key = f"{node.id}-prompt"
 
@@ -368,6 +479,9 @@ async def run_node_logic(node, inputs, input_values, nodes):
 
                 # find source node
                 source_node = next(n for n in nodes if n.id == source_id)
+
+                if val is None:
+                    continue  # 🔥 ignore empty values completely
 
                 cleaned = str(val).strip()
 
@@ -393,7 +507,7 @@ async def run_node_logic(node, inputs, input_values, nodes):
         elif other_vals:
             return " ".join(other_vals)
 
-        return ""
+        return None
     # =========================
     # OUTPUT
     # =========================

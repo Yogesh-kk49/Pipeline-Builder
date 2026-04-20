@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useStore } from "../store";
-import { BaseNode, NodeField, NodeTextarea } from "./BaseNode";
+import { BaseNode, NodeField, NodeTextarea, NodeValueDisplay } from "./BaseNode";
 import { useUpdateNodeInternals } from "reactflow";
 
 export const TextNode = ({ id, data }) => {
@@ -8,6 +8,7 @@ export const TextNode = ({ id, data }) => {
   const updateNodeInternals = useUpdateNodeInternals();
 
   const [currText, setCurrText] = useState(data?.text || "");
+  const textareaRef = useRef(null);
   const outputValue = outputs?.[id];
   const number = id.split("-")[1] || "1";
 
@@ -26,19 +27,25 @@ export const TextNode = ({ id, data }) => {
 
   const inputs =
     variables.length > 0
-      ? variables.map((v) => ({
-          id: `${id}-${v}`,
-          label: v,
-        }))
+      ? variables.map((v) => ({ id: `${id}-${v}`, label: v }))
       : [{ id: `${id}-input`, label: "Input" }];
 
-  const longestLine = Math.max(
-    18,
-    ...currText.split("\n").map((l) => l.length),
-    String(outputValue ?? "null").length + 8
-  );
+  const handleChange = (e) => {
+  setCurrText(e.target.value);
+  const el = e.target;
 
-  const dynamicWidth = Math.min(420, Math.max(260, longestLine * 6.8));
+  el.style.height = "auto";  // ← key fix: lets browser recalculate scrollHeight
+  el.style.overflowY = "hidden";
+
+  if (el.scrollHeight > 120) {
+    el.style.height = "120px";
+    el.style.overflowY = "auto";
+  } else if (el.scrollHeight < 32) {
+    el.style.height = "32px";  // never go below minimum
+  } else {
+    el.style.height = el.scrollHeight + "px";
+  }
+};
 
   return (
     <BaseNode
@@ -46,31 +53,35 @@ export const TextNode = ({ id, data }) => {
       title={`Text ${number}`}
       inputs={inputs}
       outputs={[{ id: `${id}-output`, label: "Out" }]}
-      width={dynamicWidth}
+      width={280}  // fixed width, same as InputNode
     >
       <div style={{ width: "100%" }}>
         <NodeField
           label={
-            <span
-              style={{
-                color: "#e2e8f0",
-                fontWeight: 500,
-                fontSize: "12px",
-              }}
-            >
+            <span style={{ color: "#e2e8f0", fontWeight: 500, fontSize: "12px" }}>
               Template
             </span>
           }
         >
           <NodeTextarea
+            ref={textareaRef}
             value={currText}
-            onChange={(e) => setCurrText(e.target.value)}
-            rows={Math.max(2, currText.split("\n").length)}
-            placeholder="Enter text with {{variables}}"
+            onChange={handleChange}
+            rows={1}
+            placeholder="Enter text"
             style={{
-              minHeight: "60px",
               fontSize: "13px",
               color: "#f8fafc",
+              width: "100%",
+              resize: "none",
+              padding: "6px 8px",
+              lineHeight: "1.4",
+              height: "32px",
+              minHeight: "32px",
+              maxHeight: "120px",
+              overflowY: "hidden",
+              overflowX: "hidden",
+              boxSizing: "border-box",
             }}
           />
         </NodeField>
@@ -78,40 +89,23 @@ export const TextNode = ({ id, data }) => {
         <div style={{ marginTop: "8px" }}>
           <NodeField
             label={
-              <span
-                style={{
-                  color: "#e2e8f0",
-                  fontWeight: 500,
-                  fontSize: "12px",
-                }}
-              >
+              <span style={{ color: "#e2e8f0", fontWeight: 500, fontSize: "12px" }}>
                 Current Value
               </span>
             }
           >
-            <div
-              className="node-input"
-              title={outputValue ?? "null"}
-              style={{
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                cursor: "default",
-                userSelect: "text",
-                padding: "8px 10px",
-                fontSize: "13px",
-                fontWeight: 500,
-                color: "#dbeafe",
-                minHeight: "32px",
-                display: "flex",
-                alignItems: "center",
-                background: "rgba(255, 255, 255, 0.02)",
-              }}
-            >
-              {outputValue !== undefined && outputValue !== null
-                ? String(outputValue)
-                : "null"}
-            </div>
+            <NodeValueDisplay
+              value={
+                outputValue !== undefined && outputValue !== null
+                  ? String(outputValue)
+                  : "null"
+              }
+              title={
+                outputValue !== undefined && outputValue !== null
+                  ? String(outputValue)
+                  : "null"
+              }
+            />
           </NodeField>
         </div>
       </div>
