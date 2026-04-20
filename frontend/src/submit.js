@@ -106,7 +106,7 @@ export const SubmitButton = () => {
     };
 
     try {
-      // 🔥 STEP 1: VALIDATE
+      
       const parseStartTime = performance.now();
       
       logs.phases.push({
@@ -167,7 +167,7 @@ export const SubmitButton = () => {
         return;
       }
 
-      // 🔥 STEP 2: EXECUTION
+      
       const execStartTime = performance.now();
 
       logs.phases.push({

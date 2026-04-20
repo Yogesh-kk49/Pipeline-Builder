@@ -4,7 +4,6 @@ import { PipelineUI } from "./ui";
 import { SubmitButton } from "./submit";
 import HomePage from "./HomePage";
 
-// ✅ Pipeline page inside same file
 function PipelinePage() {
   return (
     <div style={{ width: "100vw", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
@@ -15,7 +14,6 @@ function PipelinePage() {
   );
 }
 
-// ✅ Wrapper to inject navigation into HomePage
 function HomeWrapper() {
   const navigate = useNavigate();
 

@@ -321,9 +321,8 @@
   font-size: 13px;
   font-weight: 500;
 
-  white-space: pre-wrap;   /* ✅ preserves spaces */
-  word-break: break-word;  /* ✅ prevents overflow issues */
-
+  white-space: pre-wrap;   
+  word-break: break-word;  
   user-select: text;
   cursor: default;
   transition: all 0.18s ease;

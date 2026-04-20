@@ -16,26 +16,21 @@ from pymongo import MongoClient
 import os
 from dotenv import load_dotenv
 from datetime import datetime
-
-# Load environment variables
 load_dotenv()
 
-# Get Mongo URI
+
 MONGO_URI = os.getenv("MONGO_URI")
 
-# Validate URI
 if not MONGO_URI:
     raise ValueError("MONGO_URI is not set in environment variables")
 
 try:
-    # Create client with timeout
+   
     client = MongoClient(
         MONGO_URI,
         serverSelectionTimeoutMS=5000,
         tlsCAFile=certifi.where()
     )
-
-    # 🔥 Force connection check
     client.admin.command('ping')
     print("✅ MongoDB connected successfully")
 
@@ -45,7 +40,7 @@ try:
 
 except Exception as e:
     print("❌ MongoDB connection failed:", e)
-    collection = None   # 🔥 allow app to run
+    collection = None   
     
 app.add_middleware(
     CORSMiddleware,
@@ -78,15 +73,11 @@ class Pipeline(BaseModel):
     edges: List[Edge]
 
 
-# NEW (for execution)
 class ExecuteRequest(BaseModel):
     nodes: List[Node]
     edges: List[Edge]
     input_values: dict
 
-# =========================
-# SAVE PIPELINE
-# =========================
 class SavePipelineRequest(BaseModel):
     name: str
     nodes: List[Node]
@@ -122,7 +113,7 @@ def save_pipeline(req: SavePipelineRequest):
             "nodes": [n.dict() for n in req.nodes],
             "edges": [e.dict() for e in req.edges],
             "input_values": req.input_values,
-            "savedAt": datetime.utcnow()  # ✅ move it HERE
+            "savedAt": datetime.utcnow()  
         }
 
         result = collection.insert_one(pipeline)
@@ -136,10 +127,7 @@ def save_pipeline(req: SavePipelineRequest):
         return {
             "error": str(e)
         }
-    
-# =========================
-# GET ALL PIPELINES
-# =========================
+
 @app.get("/pipelines")
 def get_pipelines():
     pipelines = []
@@ -220,23 +208,13 @@ def is_dag(nodes: List[Node], edges: List[Edge]) -> bool:
     return visited == len(nodes)
 
 
-# =========================
-# EXECUTION ENGINE (NEW)
-# =========================
-
 async def run_node_logic(node, inputs, input_values, nodes):
     node_type = node.type
 
-    # Override from frontend
     if hasattr(node, "data") and node.data and "type" in node.data:
         node_type = node.data["type"]
 
-    # Safe input
-    # Normalize first available input for nodes that use a single input
-    # Safe input
-    # Normalize first available input for nodes that use a single input
-
-    input_val = None  # 🔥 start as None, not ""
+    input_val = None  
 
     if inputs:
         first_val = next(iter(inputs.values()))
@@ -246,11 +224,10 @@ async def run_node_logic(node, inputs, input_values, nodes):
 
             for v in first_val:
                 if isinstance(v, dict) and "value" in v:
-                    extracted.append(v["value"])   # keep raw (can be None)
+                    extracted.append(v["value"])   
                 else:
                     extracted.append(v)
 
-            # 🔥 if everything is None → keep None
             if all(v is None for v in extracted):
                 input_val = None
             else:
@@ -259,10 +236,10 @@ async def run_node_logic(node, inputs, input_values, nodes):
                 )
 
         else:
-            # single value case
+            
             input_val = first_val
 
-    # normalize list (if somehow still list)
+   
     if isinstance(input_val, list):
         if all(v is None for v in input_val):
             input_val = None
@@ -296,7 +273,6 @@ async def run_node_logic(node, inputs, input_values, nodes):
             variable_name = key.replace(f"{node.id}-", "")
             result = result.replace(f"{{{{{variable_name}}}}}", replacement)
 
-        # If no placeholders, prepend inputs before text
         if "{{" not in template and inputs:
             appended = []
 
@@ -315,13 +291,7 @@ async def run_node_logic(node, inputs, input_values, nodes):
 
         final = " ".join(result.split())
         return final if final else None
-    # =========================
-    # UPPERCASE
-    # =========================
 
-    # =========================
-    # FILTER (pass or block)
-    # =========================
     elif node_type == "filter":
         keyword = node.data.get("keyword", "")
         if input_val is None:
@@ -331,9 +301,6 @@ async def run_node_logic(node, inputs, input_values, nodes):
 
         return input_str if keyword in input_str else None
 
-    # =========================
-    # CONDITION (🔥 FIXED WITH BRANCHING)
-    # =========================
     elif node_type == "condition":
         value = node.data.get("value", "")
         cond_type = node.data.get("conditionType", "contains")
@@ -361,20 +328,17 @@ async def run_node_logic(node, inputs, input_values, nodes):
         elif cond_type == "endsWith":
             is_true = input_str.endswith(value)
 
-        # 🔥 RETURN BOTH PATHS (CRITICAL)
+        
         return {
-            "result": is_true,  # ✅ boolean for output display
+            "result": is_true, 
             f"{node.id}-true": input_str if is_true else None,
             f"{node.id}-false": input_str if not is_true else None,
         }
 
-    # =========================
-    # TRANSFORM
-    # =========================
     elif node_type == "transform":
         operation = node.data.get("operation", "uppercase")
 
-        # 🔥 FIX: handle empty input properly
+        
         if input_val is None:
             return None
 
@@ -393,9 +357,7 @@ async def run_node_logic(node, inputs, input_values, nodes):
             return input_str.strip()
 
         return input_str
-    # =========================
-    # MERGE
-    # =========================
+    
     elif node_type == "merge":
         merged = []
 
@@ -412,18 +374,15 @@ async def run_node_logic(node, inputs, input_values, nodes):
 
         return " ".join(" ".join(merged).split())
 
-    # =========================
-    # DELAY
-    # =========================
     elif node_type == "delay":
         delay_seconds = float(node.data.get("seconds", 1))
         delay_seconds = max(0, min(10, delay_seconds))
 
-        # 🔥 If no input → instant clear
+       
         if not input_val:
             return None
 
-        # 🔥 Apply delay ONLY for valid data
+  
         await asyncio.sleep(delay_seconds)
 
         return input_val
@@ -481,22 +440,22 @@ async def run_node_logic(node, inputs, input_values, nodes):
                 source_node = next(n for n in nodes if n.id == source_id)
 
                 if val is None:
-                    continue  # 🔥 ignore empty values completely
+                    continue  
 
                 cleaned = str(val).strip()
 
                 if key == prompt_key:
-                    # ✅ ONLY allow PromptNode for prompt
+                   
                     if source_node.type == "prompt":
                         prompt_vals.append(cleaned)
                     else:
-                        continue  # ❌ ignore invalid prompt input
+                        continue  
 
                 else:
-                    # ✅ system (or any other handle) → always allowed
+                    
                     other_vals.append(cleaned)
 
-        # 🔥 FINAL OUTPUT LOGIC
+      
 
         if prompt_vals and other_vals:
             return " ".join(prompt_vals + other_vals)
@@ -508,17 +467,12 @@ async def run_node_logic(node, inputs, input_values, nodes):
             return " ".join(other_vals)
 
         return None
-    # =========================
-    # OUTPUT
-    # =========================
+   
     elif node_type in ["output", "customOutput"]:
         if input_val is None:
             return None
         return " ".join(str(input_val).split())
 
-    # =========================
-    # DEFAULT
-    # =========================
     return None
 
 async def execute_pipeline(nodes, edges, input_values):
@@ -538,9 +492,7 @@ async def execute_pipeline(nodes, edges, input_values):
         node_id = queue.popleft()
         node = next(n for n in nodes if n.id == node_id)
 
-        # =========================
-        # 🔥 COLLECT INPUTS (CORRECT)
-        # =========================
+      
         incoming_edges = [e for e in edges if e.target == node_id]
 
         mapped_inputs = {}
@@ -572,17 +524,13 @@ async def execute_pipeline(nodes, edges, input_values):
                     "source": e.source
                 })
 
-        # =========================
-        # 🔥 EXECUTE NODE (OUTSIDE LOOP)
-        # =========================
+      
         result = await run_node_logic(node, mapped_inputs, input_values, nodes)
 
-        # 🔥 CRITICAL: if result is None → stop propagation
+       
         outputs[node_id] = result
 
-        # =========================
-        # 🔥 PROPAGATE
-        # =========================
+      
         for nei in graph[node_id]:
             indegree[nei] -= 1
             if indegree[nei] == 0:
@@ -660,10 +608,6 @@ def parse_pipeline(pipeline: Pipeline):
         )
     }
 
-
-# =========================
-# NEW EXECUTION ROUTE
-# =========================
 
 @app.post("/pipelines/execute")
 async def run_pipeline(request: ExecuteRequest):

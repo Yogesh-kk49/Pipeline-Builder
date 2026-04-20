@@ -38,7 +38,7 @@ const restoreNodePositions = (nodes) =>
         : { x: 120 + (index % 4) * 220, y: 100 + Math.floor(index / 4) * 160 },
   }));
 
-/* ── inline styles for the confirm dialog ── */
+
 const dialogStyles = {
   overlay: {
   position: 'fixed',
@@ -49,7 +49,7 @@ const dialogStyles = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  pointerEvents: 'auto', // 🔥 ADD THIS
+  pointerEvents: 'auto', 
 },
   box: {
     background: 'linear-gradient(160deg, #111827 0%, #0d1520 100%)',
@@ -358,7 +358,7 @@ export const PipelineToolbar = () => {
             </div>
           </div>
 
-          {/* 🔥 DIALOG MUST BE LAST */}
+    
           {confirmDelete && (
             <DeleteConfirmDialog
               pipelineName={confirmDelete.name}

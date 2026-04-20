@@ -62,7 +62,7 @@ export const BaseNode = ({
       className={`base-node${selected ? " selected" : ""}`}
       style={{
         minWidth: 260,
-        width: width,
+      width: width,
         boxShadow: selected
           ? `${glowShadow}, 0 16px 48px rgba(0,0,0,0.56)`
           : `0 8px 32px rgba(0,0,0,0.48)`,
@@ -201,8 +201,8 @@ export const NodeValueDisplay = ({ value, title, style }) => (
     className="node-value-display"
     title={title || String(value)}
     style={{
-      whiteSpace: "pre-wrap", // 👈 this is the key fix
-      ...style,               // 👈 allow parent styles
+      whiteSpace: "pre-wrap", 
+      ...style,               
     }}
   >
     {value !== undefined && value !== null ? String(value) : "null"}

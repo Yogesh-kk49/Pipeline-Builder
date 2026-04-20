@@ -18,7 +18,6 @@ export default function PromptNode({ id, data }) {
       ? String(outputValue)
       : "—";
 
-  // ✅ dynamic width
   const longestLine = Math.max(
     18,
     ...displayValue.split("\n").map((l) => l.length)
@@ -26,7 +25,6 @@ export default function PromptNode({ id, data }) {
 
   const dynamicWidth = Math.min(500, Math.max(260, longestLine * 7));
 
-  // ✅ force ReactFlow to update size
   useEffect(() => {
     updateNodeInternals(id);
   }, [displayValue, dynamicWidth, id, updateNodeInternals]);
