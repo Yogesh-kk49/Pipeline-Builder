@@ -8,40 +8,39 @@ import time
 import asyncio
 app = FastAPI()
 import uuid
-from pymongo import MongoClient
 import os
-from dotenv import load_dotenv
-import certifi
-from pymongo import MongoClient
-import os
-from dotenv import load_dotenv
 from datetime import datetime
-load_dotenv()
+import sqlite3
+import json
+
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pipelines.db")
 
 
-MONGO_URI = os.getenv("MONGO_URI")
+def get_db_connection():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
-if not MONGO_URI:
-    raise ValueError("MONGO_URI is not set in environment variables")
 
-try:
-   
-    client = MongoClient(
-        MONGO_URI,
-        serverSelectionTimeoutMS=5000,
-        tlsCAFile=certifi.where()
+def init_db():
+    conn = get_db_connection()
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS pipelines ("
+        "id TEXT PRIMARY KEY, "
+        "name TEXT NOT NULL, "
+        "nodes TEXT NOT NULL, "
+        "edges TEXT NOT NULL, "
+        "input_values TEXT NOT NULL, "
+        "savedAt TEXT NOT NULL"
+        ")"
     )
-    client.admin.command('ping')
-    print("✅ MongoDB connected successfully")
+    conn.commit()
+    conn.close()
 
-    # Database & collection
-    db = client["pipeline_db"]
-    collection = db["pipelines"]
 
-except Exception as e:
-    print("❌ MongoDB connection failed:", e)
-    collection = None   
-    
+init_db()
+print("Local SQLite database ready at", DB_PATH)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -49,6 +48,45 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# =========================
+# Keep-alive ping bot (for Render free tier)
+# =========================
+# Render's free web services spin down after ~15 min of no inbound HTTP
+# traffic. This background thread pings the app's own public URL every
+# few minutes so Render always sees recent traffic and keeps it awake.
+#
+# Render automatically sets RENDER_EXTERNAL_URL to your service's public
+# URL — no config needed there. If you want to point it somewhere else
+# (e.g. local testing, or a different host), set PING_URL manually.
+
+import threading
+import requests
+
+PING_URL = os.getenv("PING_URL") or os.getenv("RENDER_EXTERNAL_URL")
+PING_INTERVAL_SECONDS = int(os.getenv("PING_INTERVAL_SECONDS", "600"))  # 10 min
+
+
+def _keep_alive_loop():
+    if not PING_URL:
+        print("⚠️  Keep-alive ping bot disabled — no PING_URL / RENDER_EXTERNAL_URL set")
+        return
+
+    print(f"🤖 Keep-alive ping bot started — pinging {PING_URL} every {PING_INTERVAL_SECONDS}s")
+
+    while True:
+        time.sleep(PING_INTERVAL_SECONDS)
+        try:
+            resp = requests.get(PING_URL, timeout=10)
+            print(f"🏓 Keep-alive ping -> {resp.status_code}")
+        except Exception as e:
+            print(f"⚠️  Keep-alive ping failed: {e}")
+
+
+@app.on_event("startup")
+def start_keep_alive_bot():
+    thread = threading.Thread(target=_keep_alive_loop, daemon=True)
+    thread.start()
 
 # =========================
 # Models
@@ -84,43 +122,47 @@ class SavePipelineRequest(BaseModel):
     edges: List[Edge]
     input_values: dict
 
-from bson import ObjectId
-from bson.errors import InvalidId
-
 @app.delete("/pipelines/{pipeline_id}")
 def delete_pipeline(pipeline_id: str):
     try:
-        try:
-            obj_id = ObjectId(pipeline_id)
-        except InvalidId:
-            return {"error": "Invalid pipeline ID"}
+        conn = get_db_connection()
+        cur = conn.execute("DELETE FROM pipelines WHERE id = ?", (pipeline_id,))
+        conn.commit()
+        deleted = cur.rowcount
+        conn.close()
 
-        result = collection.delete_one({"_id": obj_id})
-
-        if result.deleted_count == 0:
+        if deleted == 0:
             return {"error": "Pipeline not found"}
 
         return {"message": "Pipeline deleted"}
 
     except Exception as e:
         return {"error": str(e)}
-    
+
 @app.post("/pipelines/save")
 def save_pipeline(req: SavePipelineRequest):
     try:
-        pipeline = {
-            "name": req.name,
-            "nodes": [n.dict() for n in req.nodes],
-            "edges": [e.dict() for e in req.edges],
-            "input_values": req.input_values,
-            "savedAt": datetime.utcnow()  
-        }
+        pipeline_id = str(uuid.uuid4())
 
-        result = collection.insert_one(pipeline)
+        conn = get_db_connection()
+        conn.execute(
+            "INSERT INTO pipelines (id, name, nodes, edges, input_values, savedAt) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                pipeline_id,
+                req.name,
+                json.dumps([n.dict() for n in req.nodes]),
+                json.dumps([e.dict() for e in req.edges]),
+                json.dumps(req.input_values),
+                datetime.utcnow().isoformat(),
+            ),
+        )
+        conn.commit()
+        conn.close()
 
         return {
             "message": "Pipeline saved",
-            "id": str(result.inserted_id)
+            "id": pipeline_id
         }
 
     except Exception as e:
@@ -130,12 +172,22 @@ def save_pipeline(req: SavePipelineRequest):
 
 @app.get("/pipelines")
 def get_pipelines():
-    pipelines = []
+    conn = get_db_connection()
+    rows = conn.execute(
+        "SELECT id, name, nodes, edges, input_values, savedAt FROM pipelines ORDER BY savedAt DESC"
+    ).fetchall()
+    conn.close()
 
-    for p in collection.find():
-        p["id"] = str(p["_id"])
-        del p["_id"]
-        pipelines.append(p)
+    pipelines = []
+    for row in rows:
+        pipelines.append({
+            "id": row["id"],
+            "name": row["name"],
+            "nodes": json.loads(row["nodes"]),
+            "edges": json.loads(row["edges"]),
+            "input_values": json.loads(row["input_values"]),
+            "savedAt": row["savedAt"],
+        })
 
     return pipelines
 # =========================
